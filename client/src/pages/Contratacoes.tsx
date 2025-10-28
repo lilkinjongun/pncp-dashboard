@@ -25,56 +25,35 @@ interface Contratacao {
   link_pncp: string;
 }
 
+interface ApiResponse {
+  total: number;
+  contratacoes: Contratacao[];
+}
+
 export default function Contratacoes() {
   const [contratacoes, setContratacoes] = useState<Contratacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     carregarContratacoes();
   }, []);
 
-  const carregarContratacoes = () => {
+  const carregarContratacoes = async () => {
     setLoading(true);
-    // Simular carregamento de dados
-    // Em produção, isso viria de uma API
-    setTimeout(() => {
-      setContratacoes([
-        {
-          id: 1,
-          numero_compra: "00017/2025",
-          ano_compra: 2025,
-          objeto: "Aquisição de Artefatos de Cimento",
-          valor_estimado: 7631669.79,
-          modalidade_nome: "Pregão - Eletrônico",
-          data_publicacao: "2025-05-12T08:16:48",
-          situacao: "Publicada",
-          link_pncp: "https://pncp.gov.br/app/editais/29138448000198/2025/17",
-        },
-        {
-          id: 2,
-          numero_compra: "00042/2025",
-          ano_compra: 2025,
-          objeto: "Registro de preços para eventual prestação de serviços para a realização de exames",
-          valor_estimado: 242030.00,
-          modalidade_nome: "Pregão - Eletrônico",
-          data_publicacao: "2025-05-13T07:19:16",
-          situacao: "Publicada",
-          link_pncp: "https://pncp.gov.br/app/editais/29138448000198/2025/42",
-        },
-        {
-          id: 3,
-          numero_compra: "00018/2025",
-          ano_compra: 2025,
-          objeto: "Eventual prestação de serviço de staff",
-          valor_estimado: 720591.72,
-          modalidade_nome: "Pregão - Eletrônico",
-          data_publicacao: "2025-05-14T07:05:04",
-          situacao: "Publicada",
-          link_pncp: "https://pncp.gov.br/app/editais/29138448000198/2025/18",
-        },
-      ]);
+    setError(null);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/contratacoes?limite=100`);
+      if (!response.ok) throw new Error('Erro ao carregar contratações');
+      const data: ApiResponse = await response.json();
+      setContratacoes(data.contratacoes || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      console.error('Erro ao buscar contratações:', err);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -99,6 +78,24 @@ export default function Contratacoes() {
     if (modalidade.includes('Inexigibilidade')) return 'outline';
     return 'default';
   };
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Contratações</h1>
+          </div>
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive">⚠️ Erro: {error}</p>
+              <p className="text-sm text-muted-foreground mt-2">Verifique se o servidor backend está rodando.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -4,33 +4,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 
 interface Stats {
-  total: number;
-  valorTotal: number;
-  ultimaAtualizacao: string;
-  recentes: number;
+  total_contratacoes: number;
+  valor_total_estimado: number;
+  ultima_atualizacao: string;
+  por_modalidade: Array<{ modalidade_nome: string; quantidade: number }>;
 }
 
 export default function Home() {
-  const [stats, setStats] = useState<Stats>({
-    total: 0,
-    valorTotal: 0,
-    ultimaAtualizacao: "-",
-    recentes: 0,
-  });
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simular carregamento de dados
-    // Em produção, isso viria de uma API
-    setTimeout(() => {
-      setStats({
-        total: 3,
-        valorTotal: 4120901.70,
-        ultimaAtualizacao: new Date().toLocaleDateString('pt-BR'),
-        recentes: 3,
-      });
-      setLoading(false);
-    }, 500);
+    const fetchStats = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/stats`);
+        if (!response.ok) throw new Error('Erro ao carregar dados');
+        const data = await response.json();
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro desconhecido');
+        console.error('Erro ao buscar stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   const formatCurrency = (value: number) => {
@@ -39,6 +41,24 @@ export default function Home() {
       currency: 'BRL',
     }).format(value);
   };
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Monitor de Contratações Públicas</h1>
+          </div>
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive">⚠️ Erro ao conectar à API: {error}</p>
+              <p className="text-sm text-muted-foreground mt-2">Verifique se o servidor backend está rodando.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -64,7 +84,7 @@ export default function Home() {
               {loading ? (
                 <div className="h-7 w-16 animate-pulse rounded bg-muted" />
               ) : (
-                <div className="text-2xl font-bold">{stats.total}</div>
+                <div className="text-2xl font-bold">{stats?.total_contratacoes || 0}</div>
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 Registradas no sistema
@@ -84,7 +104,7 @@ export default function Home() {
                 <div className="h-7 w-32 animate-pulse rounded bg-muted" />
               ) : (
                 <div className="text-2xl font-bold">
-                  {formatCurrency(stats.valorTotal)}
+                  {formatCurrency(stats?.valor_total_estimado || 0)}
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-1">
@@ -104,7 +124,9 @@ export default function Home() {
               {loading ? (
                 <div className="h-7 w-24 animate-pulse rounded bg-muted" />
               ) : (
-                <div className="text-2xl font-bold">{stats.ultimaAtualizacao}</div>
+                <div className="text-2xl font-bold">
+                  {stats?.ultima_atualizacao ? new Date(stats.ultima_atualizacao).toLocaleDateString('pt-BR') : '-'}
+                </div>
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 Dados atualizados
@@ -115,7 +137,7 @@ export default function Home() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Novas (30 dias)
+                Modalidades
               </CardTitle>
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -123,10 +145,10 @@ export default function Home() {
               {loading ? (
                 <div className="h-7 w-12 animate-pulse rounded bg-muted" />
               ) : (
-                <div className="text-2xl font-bold">{stats.recentes}</div>
+                <div className="text-2xl font-bold">{stats?.por_modalidade?.length || 0}</div>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Últimos 30 dias
+                Tipos de licitação
               </p>
             </CardContent>
           </Card>
